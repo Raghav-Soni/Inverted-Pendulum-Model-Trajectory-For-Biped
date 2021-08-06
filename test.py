@@ -1,4 +1,4 @@
-from slip import slip
+from slip_sl import slip
 import time
 import numpy as np
 
@@ -16,6 +16,6 @@ start = time.time()
 i = 0
 
 while(True):
-    print(model.step(i))                                 #The step is called periodically to return the required infromation
+    print(model.step(i, False, step_length))                                 #The step is called periodically to return the required infromation
     time.sleep(0.01)
     i = i+0.01

@@ -13,7 +13,7 @@ class slip:
 
         self.tc = math.sqrt(self.z/abs(self.g))                      #time constant based on height
         self.ts = 2*self.tc*math.log((1+math.sqrt(1-(self.alpha**2)))/self.alpha)    #time period of one step based on parameters
-        self.tb = self.ts/6                                                          #double stance time period, experimental
+        self.tb = self.ts/4                                                          #double stance time period, experimental
         self.vex = (self.alpha*self.s*math.sinh(self.ts/(2*self.tc)))/self.tc
         self.w = (2*self.s) + (self.vex*self.tb)
         print(self.ts, "  ", self.tc, self.vex, self.ts/self.tc)
@@ -42,6 +42,7 @@ class slip:
         self.t = self.ts/2
         self.by = 0
         self.ini = True
+        self.stop = False
 
     def transform_base(self, leg):                                        #Updating position of base in foot's frame
         self.base_v_f = np.matmul(self.v_tr_inv, self.base_v.transpose()).transpose()
@@ -108,21 +109,41 @@ class slip:
         z = self.foothold_init[2] + z
         return z
 
+    def get_z_line(self, t, init):
+        if(init == True):
+            if(t<self.ts/4):
+                z = self.fh*t*4/self.ts
+            else:
+                z = 4*self.fh*(0.5-(t/self.ts))
+        else:
+            if(t<self.ts/2):
+                z = self.fh*t*2/self.ts
+            else:
+                z = 2*self.fh*(1-(t/self.ts))
+        return z
 
 
 
 
-    def update_swing(self, leg, t, init):                         #Updating the swing leg
+
+    def update_swing(self, leg, t, init):     #Function to update the position of swing leg
         if(init == True):
             x = (self.foothold[0]-self.foothold_init[0])/self.ts*t*2 + self.foothold_init[0]
             y = (self.foothold[1]-self.foothold_init[1])/self.ts*t*2 + self.foothold_init[1]
+            if(self.sl == 0):
+                z = self.get_z_line(t, init)
+            else:
+                z = self.get_z_ellipse(x)
         else:
             x = (self.foothold[0]-self.foothold_init[0])/self.ts*t + self.foothold_init[0]
             if(t == self.ts):
                 y = self.foothold[1]
             else:
                 y = self.foothold_init[1] + (self.base[1] - self.base_init_y)
-        z = self.get_z_ellipse(x)
+            if(self.sl == 0):
+                z = self.get_z_line(t, init)
+            else:
+                z = self.get_z_ellipse(x)
         if(leg == 0):
             self.fr_tr[0][3] = x
             self.fr_tr[1][3] = y
@@ -144,7 +165,7 @@ class slip:
 
 
 
-    def calc_foothold(self, leg, init):             #Calculating the next position of foot at the start of the step
+    def calc_foothold(self, leg, init, stop, step_length):             #Calculating the next position of foot at the start of the step
         if(leg == 0):
             xi = self.base_fl[0]
         else:
@@ -157,8 +178,13 @@ class slip:
             self.xdf = (math.cosh(self.ts/self.tc)+1)*(self.sl/2)/(self.tc*math.sinh(self.ts/self.tc))
         self.base_v_f[0] = self.xdf
         self.update_base(leg)
-
-        self.xfoot = self.sl + self.tb*self.xdf
+        self.xfoot = step_length/2 - xi + self.tb*self.xdf
+        if(init == True):
+            self.xfoot = self.sl + self.tb*self.xdf
+        if(stop == True):
+            self.xfoot = self.sl/2
+            self.stop = True  
+        self.sl = step_length
         self.base_init_y = self.base[1]
         if(leg == 0):
             y = -2*self.s - self.tb*self.vex
@@ -172,15 +198,15 @@ class slip:
 
 
 
-    def step(self, t):                                            #Updating the step at every time
+    def step(self, t, stop, step_length):                                            #Updating the step at every time
         t = round(t,2)                                            #Calculating dt based on time difference of calling step
         self.leg_change = False
         self.dt = t-self.t_last
         self.t_last = t
         if(self.t_track==0):                               #At beginning of each new step, initial condition and final foothold are calculated
             self.transform_base(self.leg)
+            self.calc_foothold(self.leg, self.ini, stop, step_length)
             self.calc_init(self.leg)
-            self.calc_foothold(self.leg, self.ini)
         if(self.t_track<=self.t):                          #Performing the step function till the end of each step's time period
             self.transform_base(self.leg)
             self.update_step(self.leg, self.t_track)
@@ -225,6 +251,7 @@ class slip:
                     self.leg = 0
                     self.base[1] = self.by + self.vex*self.tb
                     self.base[0] = self.bx + self.xdf*self.tb
+
                 self.t_track = 0
                 self.d_track = 0
 
@@ -233,5 +260,5 @@ class slip:
         fl_tr = np.copy(self.fl_tr)                        #Returning transformation matrix of base, left foot and right foot and base velocity
         fr_tr = np.copy(self.fr_tr)                         #Also rturning the leg in swing phase, 0 for right and 1 for left
         base_v = np.copy(self.base_v)                       #Returning a parameter which is True for the step in which the swing leg changes
-        return (base_tr, fl_tr, fr_tr, self.leg, self.leg_change, base_v)   #returning all the data as a single tuple.
+        return (base_tr, fl_tr, fr_tr, self.leg, base_v)   #returning all the data as a single tuple.
  

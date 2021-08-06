@@ -1,4 +1,4 @@
-from slip import slip
+from slip_sl import slip
 import time
 import numpy as np
 import matplotlib.animation as animation         #Plotting a animated 2D graph to verify our code
@@ -21,25 +21,31 @@ ax.grid()
 
 line, = ax.plot([], [], 'o-', lw = 2)
 time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
+step_text = ax.text(0.63, 0.95, '', transform=ax.transAxes)
 t = 0
 
 def init():
     """initialize animation"""
     line.set_data([], [])
     time_text.set_text('')
-    return line, time_text
+    step_text.set_text('')
+    return line, time_text, step_text
 
 def animate(i):
     """perform animation step"""
-    global model, t, dt
-    up = model.step(t)                        #Updateing the coordinates at each time step
+    global model, t, dt, step_length
+    if(t>5):   #Changing step length.
+        step_length = 0.15
+    if(t>8):    #Changing step length again.
+        step_length = 0.05
+    up = model.step(t, False, step_length)                        #Updateing the coordinates at each time step
     up = [[up[0][0][3], up[1][0][3], up[2][0][3]], [up[0][1][3], up[1][1][3], up[2][1][3]]]  #Passing x,y coordinates to be updated in the plot
     t = t+dt
     time.sleep(dt/2)
     line.set_data(up)
     time_text.set_text('time = %.1f' % t)
-    return line, time_text
-
+    step_text.set_text('step_length = %.2f' % step_length)
+    return line, time_text, step_text
 
 ani = animation.FuncAnimation(fig, animate, frames=1000, interval=dt, blit=True, init_func=init)   #running the plot
 plt.show()                         #Displaying the plot
