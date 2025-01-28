@@ -1,5 +1,5 @@
 # Inverted-Pendulum-Model-Trajectory-For-Biped
-A Spring Loaded Inverted Pendulum (SLIP) model based framework for generating walking trajectories for bipeds.
+A Linear Inverted Pendulum (LIP) model based framework for generating walking trajectories for bipeds.
 It is a dynamic online trajectory generator which can handle varying step lengths in the motion.
 
 Stop and Step Length are two parameters that need to be passed at every step. Step length will be changed at every phase change and the trajectory will come to a halt when Stop is True.
